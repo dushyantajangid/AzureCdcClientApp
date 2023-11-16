@@ -17,14 +17,29 @@ namespace AzureCdcClientApp
         }
         public void EndMessage()
         {
-            Console.WriteLine("===================================================================================");
-            Console.WriteLine("= Please enter any value to exit                                               ====");
-            Console.WriteLine("===================================================================================");
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine("=======================================================================================");
+            Console.WriteLine("= Please enter any value to exit                                                   ====");
+            Console.WriteLine("=======================================================================================");
             Console.ReadLine();
         }
-
+        public void CdcConfigurationMissing()
+        {
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine("=======================================================================================");
+            Console.WriteLine("= CDC configuration is missing, Please update [dbo].[CdcTableOffset] table");
+            Console.WriteLine("=======================================================================================");
+        }
+        public void TableProcessedMessage(string tableName)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine("=======================================================================================");
+            Console.WriteLine("= Table " + tableName + " has been processed");
+            Console.WriteLine("=======================================================================================");
+        }
         public void AllCdcConfiguration(IEnumerable<Dictionary<string, string>> cdcConfigList)
         {
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine("=======================================================================================");
             Console.WriteLine("= Available CDC Configuration");
             Console.WriteLine("|| Id|| Table Name    || Table Offset         || Batch Size || Last Checked ||");

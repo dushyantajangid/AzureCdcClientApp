@@ -40,11 +40,13 @@ namespace AzureCdcClientApp
 
                 try
                 {
+                    _logger.LogDebug("CdcData: GetCdcData Getting CDC data from table: " + cdcDataTableName);
                     queryResult = _sqlTextQuery.PerformQuery(selectDataQuery, _sqlDbConnectionString);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "CdcData:GetCdcData: Error occured");
+                    _logger.LogDebug(ex, "CdcData:GetCdcData");
+                    _logger.LogError("CdcData:GetCdcData: Error occured");
                 }
                 finally
                 {

@@ -16,5 +16,11 @@ namespace AzureCdcClientApp.Extensions
 
             return someObject;
         }
+        public static string GetValue(this IDictionary<string, string> source, string columnName)
+        {
+            string value;
+            source.TryGetValue(columnName, out value);
+            return value;
+        }
     }
 }

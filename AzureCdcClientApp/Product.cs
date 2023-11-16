@@ -1,4 +1,5 @@
-﻿using AzureCdcClientApp.Interface;
+﻿using AzureCdcClientApp.Extensions;
+using AzureCdcClientApp.Interface;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Extensions.Logging;
@@ -27,26 +28,20 @@ namespace AzureCdcClientApp
             using (_telemetryClient.StartOperation<RequestTelemetry>("Product_ProcessProduct_operation"))
             {
                 _telemetryClient.TrackEvent("Product:ProcessProduct started");
-                string categoryId;
-                string dateAdded;
-                string description;
-                string destinationUpsertQuery;
-                string imageUrl;
+
+                string operationType = cdcDetail.GetValue("__$operation");
+                string productId = cdcDetail.GetValue("product_id");
+                string productName = cdcDetail.GetValue("product_name");
+                string categoryId = cdcDetail.GetValue("category_id");
+                string price = cdcDetail.GetValue("price");
+                string description = cdcDetail.GetValue("description");
+                string imageUrl = cdcDetail.GetValue("image_url");
+                string dateAdded = cdcDetail.GetValue("date_added");
                 bool isSuccess = false;
+                string destinationUpsertQuery;
 
-                string operationType;
-                string price;
-                string productId;
-                string productName;
-
-                cdcDetail.TryGetValue("__$operation", out operationType);
-                cdcDetail.TryGetValue("product_id", out productId);
-                cdcDetail.TryGetValue("product_name", out productName);
-                cdcDetail.TryGetValue("category_id", out categoryId);
-                cdcDetail.TryGetValue("price", out price);
-                cdcDetail.TryGetValue("description", out description);
-                cdcDetail.TryGetValue("image_url", out imageUrl);
-                cdcDetail.TryGetValue("date_added", out dateAdded);
+                _logger.LogDebug("Product: ProcessProduct Processing operationType: " + operationType + " productId: " + productId + " productName: " + productName +
+                 " categoryId: " + categoryId + " price: " + price + " description: " + description + " imageUrl: " + imageUrl + " dateAdded: " + dateAdded);
 
                 switch (operationType)
                 {
@@ -82,7 +77,8 @@ namespace AzureCdcClientApp
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Product:UpsertProduct: Error occured");
+                    _logger.LogDebug(ex, "Product:UpsertProduct");
+                    _logger.LogError("Product:UpsertProduct: Error occured");
                     return false;
                 }
                 finally

@@ -12,7 +12,6 @@ namespace AzureCdcClientApp
         private readonly IConfigurationSections _config;
         private readonly ILogger<CdcConfiguration> _logger;
         private readonly TelemetryClient _telemetryClient;
-
         private readonly string _sqlDbConnectionString;
 
         public CdcConfiguration(IKeyVaultAccess keyVaultAccess, ISqlTextQuery sqlTextQuery, IConfigurationSections config, TelemetryClient telemetryClient, ILogger<CdcConfiguration> logger)
@@ -39,7 +38,8 @@ namespace AzureCdcClientApp
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "CdcConfiguration:GetCdcConfigurationData: Error occured");
+                    _logger.LogDebug(ex, "CdcConfiguration:GetCdcConfigurationData");
+                    _logger.LogError("CdcConfiguration:GetCdcConfigurationData: Error occured, Couldn't get CDC configuration data");
                 }
                 finally
                 {
@@ -63,6 +63,7 @@ namespace AzureCdcClientApp
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogDebug(ex, "CdcConfiguration:UpdateCdcOffsetData");
                     _logger.LogError(ex, "CdcConfiguration:UpdateCdcOffsetData: Error occured");
                 }
                 finally
@@ -85,6 +86,7 @@ namespace AzureCdcClientApp
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogDebug(ex, "CdcConfiguration:UpdateCdcLastDateCheckData");
                     _logger.LogError(ex, "CdcConfiguration:UpdateCdcLastDateCheckData: Error occured");
                 }
                 finally

@@ -15,15 +15,6 @@ namespace AzureCdcClientApp.Configurations
               .AddJsonFile($"Configurations/appsettings.json", optional: true, reloadOnChange: true)
               .Build();
         }
-        public Logging GetLoggingConfiguration()
-        {
-            var loggingConfig = _configuration.GetSection("Logging");
-
-            return new Logging()
-            {
-                LogLevel = new LogLevel() { Default = loggingConfig.GetValue<string>("LogLevel:Default") }
-            };
-        }
         public AzureOptions GetAzureConfiguration()
         {
             var azureOptionsConfig = _configuration.GetSection("AzureOptions");
@@ -49,6 +40,10 @@ namespace AzureCdcClientApp.Configurations
                 DestinationDbKey = keyVaultConfig.GetValue<string>("DestinationDbKey"),
                 ApplicationInsightsKey = keyVaultConfig.GetValue<string>("ApplicationInsightsKey")
             };
+        }
+        public IConfigurationSection GetConfigurationSection(string sectionName)
+        {
+            return _configuration.GetSection(sectionName);
         }
     }
 }

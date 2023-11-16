@@ -1,4 +1,5 @@
-﻿using AzureCdcClientApp.Interface;
+﻿using AzureCdcClientApp.Extensions;
+using AzureCdcClientApp.Interface;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Extensions.Logging;
@@ -28,15 +29,13 @@ namespace AzureCdcClientApp
             {
                 _telemetryClient.TrackEvent("Category:ProcessCategory started");
 
-                string categoryId;
-                string categoryName;
+                string operationType = cdcDetail.GetValue("__$operation");
+                string categoryId = cdcDetail.GetValue("category_id");
+                string categoryName = cdcDetail.GetValue("category_name");
                 string destinationUpsertQuery;
                 bool isSuccess = false;
-                string operationType;
 
-                cdcDetail.TryGetValue("__$operation", out operationType);
-                cdcDetail.TryGetValue("category_id", out categoryId);
-                cdcDetail.TryGetValue("category_name", out categoryName);
+                _logger.LogDebug("Category: ProcessCategory Processing operationType: " + operationType + " categoryId: " + categoryId + " categoryName: " + categoryName);
 
                 switch (operationType)
                 {
@@ -70,7 +69,8 @@ namespace AzureCdcClientApp
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Category:UpsertCategory: Error occured");
+                    _logger.LogDebug(ex, "Category:UpsertCategory");
+                    _logger.LogError("Category:UpsertCategory: Error occured");
                     return false;
                 }
                 finally

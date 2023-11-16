@@ -11,85 +11,130 @@ namespace AzureCdcClientApp
 {
     internal class Program
     {
-        static SqlTextQuery _sqlTextQuery;
+        static IServiceProvider _serviceProvider;
+        static ILoggerFactory _loggerFactory;
+        static ILogger<Program> _programLogger;
+        static IConfigurationSections _config;
+        static IKeyVaultAccess _keyVaultAccess;
+        static TelemetryClient _telemetryClient;
+        static IPrintOutput _printOutput;
+
         static Category _category;
         static Product _product;
         static CdcConfiguration _cdcConfiguration;
         static CdcData _cdcData;
-        static IServiceProvider _serviceProvider;
-        static TelemetryClient _telemetryClient;
-        static ILogger<Product> _productLogger;
-        static ILogger<Category> _categoryLogger;
-        static ILogger<CdcConfiguration> _cdcConfigurationLogger;
-        static ILogger<CdcData> _cdcLogger;
-        static ILogger<KeyVaultAccess> _keyVaultLogger;
-        static IConfigurationSections _config;
-        static IPrintOutput _printOutput;
-        static IKeyVaultAccess _keyVaultAccess;
 
-        static async Task Main()
+        static void Main()
         {
             string newOffset;
             bool success;
 
-            PrepareService();
+            StartupInitialization();
+            _programLogger.LogInformation("Program:Main Started");
 
-            _printOutput.WelcomeMessage();
+            ServiceInitialization();
 
-            IEnumerable<Dictionary<string, string>> cdcConfiguration = _cdcConfiguration.GetCdcConfigurationData();
+            _printOutput?.WelcomeMessage();
 
-            _printOutput.AllCdcConfiguration(cdcConfiguration);
-
-            foreach (var cdcTable in cdcConfiguration)
+            if (_cdcConfiguration is not null)
             {
-                CdcConfigurationModel cdcObj = cdcTable.ToObject<CdcConfigurationModel>();
+                IEnumerable<Dictionary<string, string>> cdcConfiguration = _cdcConfiguration.GetCdcConfigurationData();
 
-                IEnumerable<Dictionary<string, string>> cdcDataCollection = _cdcData.GetCdcData(cdcObj);
-
-                if (cdcDataCollection.Any())
+                if (cdcConfiguration is not null && cdcConfiguration.Any())
                 {
-                    foreach (var cdcDetail in cdcDataCollection)
+                    _printOutput.AllCdcConfiguration(cdcConfiguration);
+
+                    foreach (var cdcTable in cdcConfiguration)
                     {
-                        switch (cdcObj.table_name.ToLower())
+                        CdcConfigurationModel cdcObj = cdcTable.ToObject<CdcConfigurationModel>();
+
+                        _programLogger.LogDebug("Program: Main Processing table: " + cdcObj.table_name);
+
+                        IEnumerable<Dictionary<string, string>> cdcDataCollection = _cdcData.GetCdcData(cdcObj);
+
+                        if (cdcDataCollection.Any())
                         {
-                            case "dbo.categories":
-                                success = _category.ProcessCategory(cdcDetail);
-                                break;
+                            foreach (var cdcDetail in cdcDataCollection)
+                            {
+                                switch (cdcObj.table_name.ToLower())
+                                {
+                                    case "dbo.categories":
+                                        success = _category.ProcessCategory(cdcDetail);
+                                        break;
 
-                            case "dbo.products":
-                                success = _product.ProcessProduct(cdcDetail);
-                                break;
+                                    case "dbo.products":
+                                        success = _product.ProcessProduct(cdcDetail);
+                                        break;
+                                }
+
+                                _cdcConfiguration.UpdateCdcOffsetData(cdcObj, cdcDetail.GetValue("start_lsn_string"));
+                            }
                         }
+                        _cdcConfiguration.UpdateCdcLastDateCheckData(cdcObj);
+                        _programLogger.LogDebug("Program: Main Processed table: " + cdcObj.table_name);
+                        _printOutput.TableProcessedMessage(cdcObj.table_name);
 
-                        cdcDetail.TryGetValue("start_lsn_string", out newOffset);
-                        Console.Write("Processing " + newOffset);
-                        _cdcConfiguration.UpdateCdcOffsetData(cdcObj, newOffset);
                     }
                 }
-                _cdcConfiguration.UpdateCdcLastDateCheckData(cdcObj);
+                else
+                    _printOutput.CdcConfigurationMissing();
             }
 
-            _telemetryClient.Flush();
-            _printOutput.EndMessage();
+            _printOutput?.EndMessage();
+            _telemetryClient?.Flush();
+            _programLogger.LogInformation("Program:Main Completed");
+
         }
 
-        private static void PrepareService()
+        private static void ServiceInitialization()
+        {
+            ILogger<Product> _productLogger;
+            ILogger<Category> _categoryLogger;
+            ILogger<CdcConfiguration> _cdcConfigurationLogger;
+            ILogger<CdcData> _cdcDataLogger;
+            ILogger<KeyVaultAccess> _keyVaultLogger;
+            ILogger<ServiceBuilder> _serviceBuilderLogger;
+
+            SqlTextQuery _sqlTextQuery;
+
+            try
+            {
+                _programLogger.LogInformation("Program:ServiceInitialization Started");
+
+                _keyVaultLogger = _loggerFactory.CreateLogger<KeyVaultAccess>();
+                _serviceBuilderLogger = _loggerFactory.CreateLogger<ServiceBuilder>();
+                _cdcConfigurationLogger = _loggerFactory.CreateLogger<CdcConfiguration>();
+                _cdcDataLogger = _loggerFactory.CreateLogger<CdcData>();
+                _productLogger = _loggerFactory.CreateLogger<Product>();
+                _categoryLogger = _loggerFactory.CreateLogger<Category>();
+
+                _keyVaultAccess = new KeyVaultAccess(_config, _keyVaultLogger);
+                _serviceProvider = new ServiceBuilder(_config, _keyVaultAccess, _serviceBuilderLogger).ServiceProvider();
+                _printOutput = _serviceProvider.GetRequiredService<PrintOutput>();
+
+                _telemetryClient = _serviceProvider.GetRequiredService<TelemetryClient>();
+                _sqlTextQuery = _serviceProvider.GetRequiredService<SqlTextQuery>();
+
+                _cdcConfiguration = new CdcConfiguration(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _cdcConfigurationLogger);
+                _cdcData = new CdcData(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _cdcDataLogger);
+
+                _category = new Category(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _categoryLogger);
+                _product = new Product(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _productLogger);
+            }
+            catch (Exception ex)
+            {
+                _programLogger.LogDebug(ex, "Program:ServiceInitialization Couldn't initiate services");
+                _programLogger.LogCritical("Program:ServiceInitialization Couldn't initiate services");
+            }
+            _programLogger.LogInformation("Program:ServiceInitialization Completed");
+        }
+
+        private static void StartupInitialization()
         {
             _config = new Configuration();
-            _keyVaultAccess = new KeyVaultAccess(_config);
-            _serviceProvider = new ServiceBuilder(_config, _keyVaultAccess).ServiceProvider();
+            _loggerFactory = new LoggingBuilder(_config).BuildLogger();
 
-            _productLogger = _serviceProvider.GetRequiredService<ILogger<Product>>();
-            _categoryLogger = _serviceProvider.GetRequiredService<ILogger<Category>>();
-            _keyVaultLogger = _serviceProvider.GetRequiredService<ILogger<KeyVaultAccess>>();
-            _telemetryClient = _serviceProvider.GetRequiredService<TelemetryClient>();
-            _sqlTextQuery = _serviceProvider.GetRequiredService<SqlTextQuery>();
-            _printOutput = _serviceProvider.GetRequiredService<PrintOutput>();
-
-            _category = new Category(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _categoryLogger);
-            _product = new Product(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _productLogger);
-            _cdcConfiguration = new CdcConfiguration(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _cdcConfigurationLogger);
-            _cdcData = new CdcData(_keyVaultAccess, _sqlTextQuery, _config, _telemetryClient, _cdcLogger);
+            _programLogger = _loggerFactory.CreateLogger<Program>();
         }
     }
 
