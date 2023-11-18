@@ -21,12 +21,8 @@ namespace AzureCdcClientApp.Configurations
 
             return new AzureOptions()
             {
-                TenantId = azureOptionsConfig.GetValue<string>("TenantId"),
                 ApplicationId = azureOptionsConfig.GetValue<string>("ApplicationId"),
                 AuthenticationKey = azureOptionsConfig.GetValue<string>("AuthenticationKey"),
-                SubscriptionId = azureOptionsConfig.GetValue<string>("SubscriptionId"),
-                ActiveDirectoryAuthority = azureOptionsConfig.GetValue<string>("ActiveDirectoryAuthority"),
-                ResourceManagerUrl = azureOptionsConfig.GetValue<string>("ResourceManagerUrl"),
             };
         }
         public KeyVaultOptions GetKeyVaultConfiguration()
